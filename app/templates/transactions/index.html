@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Мои транзакции</h2>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
+        <i class="bi bi-plus-lg"></i> Добавить транзакцию
+    </button>
+</div>
+
+<!-- Форма фильтров и поиска -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-body py-3">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small">Поиск по описанию</label>
+                <input type="text" name="search" class="form-control form-control-sm"
+                       placeholder="Введите текст..." value="{{ search or '' }}">
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label small">Тип</label>
+                <select name="type" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    <option value="income" {% if type_filter == 'income' %}selected{% endif %}>Доходы</option>
+                    <option value="expense" {% if type_filter == 'expense' %}selected{% endif %}>Расходы</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small">Категория</label>
+                <select name="category" class="form-select form-select-sm">
+                    <option value="0">Все категории</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if category_filter == cat.id %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm flex-fill">Применить</button>
+                <a href="{{ url_for('transactions.index') }}" class="btn btn-outline-secondary btn-sm flex-fill">Сбросить</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Таблица транзакций -->
+{% if transactions %}
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Дата</th>
+                    <th>Тип</th>
+                    <th>Категория</th>
+                    <th class="text-end">Сумма</th>
+                    <th>Описание</th>
+                    <th width="160">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td>{{ t.date.strftime('%d.%m.%Y') }}</td>
+                    <td>
+                        {% if t.type == 'income' %}
+                            <span class="badge bg-success">Доход</span>
+                        {% else %}
+                            <span class="badge bg-danger">Расход</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ t.category.name }}</td>
+                    <td class="text-end fw-bold {% if t.type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                        {{ t.amount }} ₽
+                    </td>
+                    <td>{{ t.description or '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('transactions.edit', id=t.id) }}"
+                           class="btn btn-sm btn-outline-primary">Изменить</a>
+
+                        <form action="{{ url_for('transactions.delete', id=t.id) }}"
+                              method="POST" class="d-inline"
+                              onsubmit="return confirm('Удалить эту транзакцию?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info text-center">
+    Транзакций не найдено. Измените фильтры или <a href="{{ url_for('transactions.add') }}">добавьте первую</a>.
+</div>
+{% endif %}
+
+<!-- ==================== МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ ==================== -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить транзакцию</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="POST" action="{{ url_for('transactions.add') }}">
+                <div class="modal-body">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.amount.label(class="form-label") }}
+                        {{ form.amount(class="form-control") }}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.type.label(class="form-label") }}
+                            {{ form.type(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.category_id.label(class="form-label") }}
+                            {{ form.category_id(class="form-select") }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.date.label(class="form-label") }}
+                        {{ form.date(class="form-control", type="date", value=today) }}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows=2) }}
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Автоматически подставляем сегодняшнюю дату при открытии модалки
+    const modal = document.getElementById('addTransactionModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function () {
+            const dateInput = modal.querySelector('input[type="date"]');
+            if (dateInput && !dateInput.value) {
+                const today = new Date().toISOString().split('T')[0];
+                dateInput.value = today;
+            }
+        });
+    }
+</script>
+{% endblock %}
