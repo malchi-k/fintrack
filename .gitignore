@@ -2,5 +2,5 @@ venv/
 instance/
 __pycache__/
 *.pyc
-.env.example
 .DS_Store
+.env
